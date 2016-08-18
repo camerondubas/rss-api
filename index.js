@@ -2,7 +2,6 @@
 
 let express = require('express');
 let FeedParser = require('feedparser');
-let feedparser = new FeedParser();
 let request = require('request');
 let utils = require('./utils');
 
@@ -12,6 +11,7 @@ app.set('port', (process.env.PORT || 3000));
 
 app.use(utils.allowCrossDomain);
 app.use('/feed', (req, res, next) => {
+  let feedparser = new FeedParser();
   let url = req.query.url || undefined;
 
   if (!url) {
