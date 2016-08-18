@@ -10,6 +10,7 @@ let app = express();
 
 app.set('port', (process.env.PORT || 3000));
 
+app.use(utils.allowCrossDomain);
 app.use('/feed', (req, res, next) => {
   let url = req.query.url || undefined;
 
