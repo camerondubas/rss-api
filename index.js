@@ -1,19 +1,24 @@
 'use strict';
 
 let express = require('express');
+let app = express();
+
 let FeedParser = require('feedparser');
 let request = require('request');
 let utils = require('./utils');
 
-let app = express();
+let NodeCache = require('node-cache');
+let cache =  new NodeCache();
 
 app.set('port', (process.env.PORT || 3000));
 
 app.use(utils.allowCrossDomain);
 app.use('/feed', (req, res, next) => {
-  let feedparser = new FeedParser();
   let url = req.query.url || undefined;
+  const CACHE_EXPIRY_SECONDS = 3600; // 60 Minutes
+  const EXPIRY_REFRESS_MILLISECONDS = 600000; // 10 Minutes;
 
+  // Validate Request
   if (!url) {
     res.statusCode = 500;
     return res.send('No URL Provided');
@@ -24,36 +29,58 @@ app.use('/feed', (req, res, next) => {
     return res.send('URL is Invalid');
   }
 
-  let feed = request(url);
-  let items = [];
+  // Check for cached version
+  let cachedFeed = cache.get(url);
+  if (cachedFeed) {
+    next(cachedFeed);
 
-  feed.on('error', () => {
-    res.statusCode = 500;
-    return res.send('Error Fetching Feed. Please double check URL is correct');
-  });
-
-  feed.on('response', res => {
-    if (res.statusCode !== 200) {
-      return this.emit('error', new Error('Bad status code'));
+    if (cache.getTtl(url) - Date.now() < EXPIRY_REFRESS_MILLISECONDS) {
+      fetchFeed().then(
+        feedItems => cache.set(url, feedItems, CACHE_EXPIRY_SECONDS),
+        err => console.log(err)
+      );
     }
 
-    res.pipe(feedparser);
-  });
+  } else {
+    fetchFeed().then(
+      feedItems => {
+        cache.set(url, feedItems, CACHE_EXPIRY_SECONDS);
+        next(feedItems);
+      },
+      err => console.log(err)
+    );
+  }
 
-  feedparser.on('error', () => {
-    // res.statusCode = 500;
-    // return res.send('Error Parsing Feed. Please double check URL is an RSS Feed');
-  });
+  function fetchFeed() {
+    return new Promise((resolve, reject) => {
+      let feedparser = new FeedParser();
 
+      let feed = request(url);
+      let items = [];
 
-  feedparser.on('readable', function() {
-    let item;
-    while (item = this.read()) {
-      items.push(item);
-    }
-  });
+      feed.on('error', () => {
+        res.statusCode = 500;
+        return res.send('Error Fetching Feed. Please double check URL is correct');
+      });
 
-  feedparser.on('end', () => next(items));
+      feed.on('response', res => {
+        if (res.statusCode !== 200) {
+          return this.emit('error', 'Bad status code');
+        }
+
+        res.pipe(feedparser);
+      });
+
+      // TODO: Handle FeedParser Error
+      // feedparser.on('error', () => {});
+
+      feedparser.on('readable', function() {
+        items.push(this.read());
+      });
+
+      feedparser.on('end', () => resolve(items));
+    });
+  }
 });
 
 
