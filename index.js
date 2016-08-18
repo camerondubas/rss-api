@@ -69,6 +69,6 @@ app.use((data, req, res, next) => {
   res.status(status).send(data);
 });
 
-app.listen(3000, () => {
+app.listen(app.get('port'), () => {
   console.log('Listening on port', app.get('port'));
 });
