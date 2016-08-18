@@ -1,5 +1,8 @@
 'use strict';
 
+// TODO: Add optional "Force Refresh" Option
+// TODO: Cleanup Error Handling
+
 let express = require('express');
 let app = express();
 
