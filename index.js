@@ -38,8 +38,8 @@ app.use('/feed', (req, res) => {
   });
 
   feedparser.on('error', () => {
-    res.statusCode = 500;
-    return res.send('Error Parsing Feed. Please double check URL is an RSS Feed');
+    // res.statusCode = 500;
+    // return res.send('Error Parsing Feed. Please double check URL is an RSS Feed');
   });
 
 
