@@ -8,7 +8,9 @@ let utils = require('./utils');
 
 let app = express();
 
-app.use('/feed', (req, res) => {
+app.set('port', (process.env.PORT || 3000));
+
+app.use('/feed', (req, res, next) => {
   let url = req.query.url || undefined;
 
   if (!url) {
@@ -50,9 +52,23 @@ app.use('/feed', (req, res) => {
     }
   });
 
-  feedparser.on('end', () => res.send(items));
+  feedparser.on('end', () => next(items));
+});
+
+
+app.use('/', (req, res) => {
+  res.send('<h1>RSS API</h1>')
+});
+
+// Catch 404
+app.use((req, res, next) => res.status(404).send(`<h1>Error 404: Cannot ${req.method} ${req.url}.</h1>`));
+
+// Handle Response
+app.use((data, req, res, next) => {
+  let status = data.status === undefined ? 200 : (data.status || 533);
+  res.status(status).send(data);
 });
 
 app.listen(3000, () => {
-  console.log('Listening on port 3000');
+  console.log('Listening on port', app.get('port'));
 });
